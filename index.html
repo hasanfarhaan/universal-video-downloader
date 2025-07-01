@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal Video Downloader</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        :root {
+            --primary: #1688ff;
+            --primary-dark: #0d5cb6;
+            --secondary: #6486ff;
+            --surface: #121212;
+            --surface-light: #1e1e1e;
+            --surface-variant: #2d2d2d;
+            --text-primary: #ffffff;
+            --text-secondary: #b3b3b3;
+            --success: #4caf50;
+            --error: #f44336;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 16px;
+            padding-top: 60px;
+        }
+
+        /* Toolbar styles */
+        .toolbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background-color: rgba(18, 18, 18, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            height: 60px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            font-size: 24px;
+            color: var(--primary);
+        }
+
+        .logo-text {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .toolbar-actions {
+            display: flex;
+            gap: 16px;
+        }
+
+        .toolbar-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            font-size: 18px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .toolbar-btn:hover {
+            background-color: var(--surface-variant);
+        }
+
+        /* Main content */
+        .container {
+            max-width: 900px;
+            width: 100%;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .card {
+            background-color: var(--surface-light);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-header {
+            padding: 20px;
+            background-color: var(--surface-variant);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .card-title {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .card-body {
+            padding: 20px;
+        }
+
+        /* URL input section */
+        .url-input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .input-label {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 12px;
+        }
+
+        .url-input {
+            flex: 1;
+            padding: 14px 16px;
+            background-color: var(--surface-variant);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .url-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .btn {
+            padding: 14px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background-color: var(--surface-variant);
+            color: var(--text-primary);
+        }
+
+        .btn-secondary:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Video preview */
+        .preview-container {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .preview-title {
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        .video-preview {
+            position: relative;
+            width: 100%;
+            padding-top: 56.25%; /* 16:9 Aspect Ratio */
+            background-color: var(--surface-variant);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .video-thumbnail {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, #1a237e, #311b92);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .play-icon {
+            width: 60px;
+            height: 60px;
+            background-color: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+        }
+
+        .thumbnail-text {
+            font-size: 16px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        /* Video info */
+        .video-info {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .video-title {
+            font-size: 18px;
+            font-weight: 600;
+            line-height: 1.4;
+        }
+
+        .video-meta {
+            display: flex;
+            gap: 16px;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .video-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Format options */
+        .format-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 16px;
+            margin-top: 20px;
+        }
+
+        .format-option {
+            background-color: var(--surface-variant);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 2px solid transparent;
+        }
+
+        .format-option:hover {
+            border-color: var(--primary);
+            transform: translateY(-3px);
+        }
+
+        .format-option.active {
+            border-color: var(--primary);
+            background-color: rgba(22, 136, 255, 0.1);
+        }
+
+        .format-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .format-type {
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .format-size {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .format-details {
+            display: flex;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        /* Download button */
+        .download-btn-container {
+            margin-top: 24px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .btn-download {
+            background: linear-gradient(45deg, var(--primary), var(--secondary));
+            padding: 16px 32px;
+            font-size: 18px;
+            border-radius: 50px;
+            box-shadow: 0 4px 20px rgba(22, 136, 255, 0.4);
+        }
+
+        .btn-download:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 25px rgba(22, 136, 255, 0.6);
+        }
+
+        /* Supported platforms */
+        .platforms {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 16px;
+            justify-content: center;
+        }
+
+        .platform {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 8px 16px;
+            border-radius: 50px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Progress bar */
+        .progress-container {
+            margin-top: 20px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 50px;
+            height: 8px;
+            overflow: hidden;
+            display: none;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        /* Footer */
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 14px;
+            padding: 20px;
+        }
+
+        /* Notification */
+        .notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 24px;
+            border-radius: 50px;
+            background: var(--success);
+            color: white;
+            font-weight: 500;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .notification.error {
+            background: var(--error);
+        }
+
+        .notification.show {
+            opacity: 1;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .toolbar {
+                padding: 12px;
+            }
+            
+            .logo-text {
+                font-size: 16px;
+            }
+            
+            .card-header, .card-body {
+                padding: 16px;
+            }
+            
+            .input-wrapper {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+            }
+            
+            .format-options {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .toolbar {
+                height: 56px;
+            }
+            
+            .video-meta {
+                flex-direction: column;
+                gap: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Toolbar -->
+    <div class="toolbar">
+        <div class="logo">
+            <div class="logo-icon">
+                <i class="fas fa-download"></i>
+            </div>
+            <div class="logo-text">Universal Video Downloader</div>
+        </div>
+        <div class="toolbar-actions">
+            <button class="toolbar-btn" id="historyBtn">
+                <i class="fas fa-history"></i>
+            </button>
+            <button class="toolbar-btn" id="settingsBtn">
+                <i class="fas fa-cog"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div class="notification" id="notification">
+        <i class="fas fa-check-circle"></i>
+        <span id="notificationText">Video downloaded successfully!</span>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container">
+        <!-- URL Input Card -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">Download Video</div>
+            </div>
+            <div class="card-body">
+                <div class="url-input-group">
+                    <div class="input-label">Enter video URL:</div>
+                    <div class="input-wrapper">
+                        <input 
+                            type="text" 
+                            class="url-input" 
+                            id="videoUrl"
+                            placeholder="https://www.youtube.com/watch?v=..." 
+                            value="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+                        >
+                        <button class="btn btn-primary" id="fetchBtn">
+                            <i class="fas fa-cloud-download-alt"></i>
+                            Fetch Video Info
+                        </button>
+                    </div>
+                </div>
+                <div class="platforms">
+                    <div class="platform">
+                        <i class="fab fa-youtube"></i>
+                        <span>YouTube</span>
+                    </div>
+                    <div class="platform">
+                        <i class="fab fa-tiktok"></i>
+                        <span>TikTok</span>
+                    </div>
+                    <div class="platform">
+                        <i class="fab fa-instagram"></i>
+                        <span>Instagram</span>
+                    </div>
+                    <div class="platform">
+                        <i class="fab fa-twitter"></i>
+                        <span>Twitter</span>
+                    </div>
+                    <div class="platform">
+                        <i class="fab fa-facebook"></i>
+                        <span>Facebook</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Video Preview Card -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">Video Preview</div>
+            </div>
+            <div class="card-body">
+                <div class="preview-container">
+                    <div class="preview-title" id="videoTitle">Rick Astley - Never Gonna Give You Up (Official Music Video)</div>
+                    <div class="video-preview">
+                        <div class="video-thumbnail" id="videoThumbnail">
+                            <div class="play-icon">
+                                <i class="fas fa-play"></i>
+                            </div>
+                            <div class="thumbnail-text">Click to play video preview</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Video Info Card -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">Video Information</div>
+            </div>
+            <div class="card-body">
+                <div class="video-info">
+                    <div class="video-title" id="detailTitle">Rick Astley - Never Gonna Give You Up (Official Music Video)</div>
+                    <div class="video-meta">
+                        <div class="video-meta-item">
+                            <i class="fas fa-user"></i>
+                            <span id="channelName">Rick Astley</span>
+                        </div>
+                        <div class="video-meta-item">
+                            <i class="fas fa-clock"></i>
+                            <span id="duration">3:32</span>
+                        </div>
+                        <div class="video-meta-item">
+                            <i class="fas fa-calendar"></i>
+                            <span id="uploadDate">Oct 25, 2009</span>
+                        </div>
+                        <div class="video-meta-item">
+                            <i class="fas fa-eye"></i>
+                            <span id="views">1.4B views</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Format Options -->
+                <div class="format-options" id="formatOptions">
+                    <div class="format-option active">
+                        <div class="format-header">
+                            <div class="format-type">MP4 1080p</div>
+                            <div class="format-size">128MB</div>
+                        </div>
+                        <div class="format-details">
+                            <span>Video: H.264</span>
+                            <span>Audio: AAC</span>
+                        </div>
+                    </div>
+                    <div class="format-option">
+                        <div class="format-header">
+                            <div class="format-type">MP4 720p</div>
+                            <div class="format-size">78MB</div>
+                        </div>
+                        <div class="format-details">
+                            <span>Video: H.264</span>
+                            <span>Audio: AAC</span>
+                        </div>
+                    </div>
+                    <div class="format-option">
+                        <div class="format-header">
+                            <div class="format-type">MP3</div>
+                            <div class="format-size">12MB</div>
+                        </div>
+                        <div class="format-details">
+                            <span>Audio: 320kbps</span>
+                        </div>
+                    </div>
+                    <div class="format-option">
+                        <div class="format-header">
+                            <div class="format-type">MP4 480p</div>
+                            <div class="format-size">42MB</div>
+                        </div>
+                        <div class="format-details">
+                            <span>Video: H.264</span>
+                            <span>Audio: AAC</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="progress-container" id="progressContainer">
+                    <div class="progress-bar" id="progressBar"></div>
+                </div>
+
+                <!-- Download Button -->
+                <div class="download-btn-container">
+                    <button class="btn btn-primary btn-download" id="downloadBtn">
+                        <i class="fas fa-download"></i>
+                        Download Video
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        Universal Video Downloader v2.3.1 &copy; 2023 | All rights reserved
+    </div>
+
+    <script>
+        // DOM Elements
+        const videoUrl = document.getElementById('videoUrl');
+        const fetchBtn = document.getElementById('fetchBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const formatOptions = document.getElementById('formatOptions');
+        const videoTitle = document.getElementById('videoTitle');
+        const detailTitle = document.getElementById('detailTitle');
+        const channelName = document.getElementById('channelName');
+        const duration = document.getElementById('duration');
+        const uploadDate = document.getElementById('uploadDate');
+        const views = document.getElementById('views');
+        const videoThumbnail = document.getElementById('videoThumbnail');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+        const notification = document.getElementById('notification');
+        const notificationText = document.getElementById('notificationText');
+
+        // Show notification
+        function showNotification(message, isError = false) {
+            notificationText.textContent = message;
+            notification.className = isError ? 'notification error show' : 'notification show';
+            
+            setTimeout(() => {
+                notification.className = isError ? 'notification error' : 'notification';
+            }, 3000);
+        }
+
+        // Add interactivity to format options
+        formatOptions.addEventListener('click', (e) => {
+            const option = e.target.closest('.format-option');
+            if (!option) return;
+            
+            document.querySelectorAll('.format-option').forEach(el => {
+                el.classList.remove('active');
+            });
+            option.classList.add('active');
+        });
+
+        // Fetch video info
+        fetchBtn.addEventListener('click', async () => {
+            const url = videoUrl.value.trim();
+            if (!url) {
+                showNotification('Please enter a video URL', true);
+                return;
+            }
+            
+            // Show loading state
+            const originalText = fetchBtn.innerHTML;
+            fetchBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Fetching...';
+            fetchBtn.disabled = true;
+            
+            try {
+                // Simulate API call to fetch video info
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                // Update UI with video info
+                
+    const response = await fetch('https://your-render-app.onrender.com/api/info', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+    });
+    const videoData = await response.json();
+    
+                
+                videoTitle.textContent = videoData.title;
+                detailTitle.textContent = videoData.title;
+                channelName.textContent = videoData.channel;
+                duration.textContent = videoData.duration;
+                uploadDate.textContent = videoData.uploadDate;
+                views.textContent = videoData.views;
+                
+                // Set thumbnail
+                videoThumbnail.style.background = `url('${videoData.thumbnail}') center/cover`;
+                videoThumbnail.innerHTML = '<div class="play-icon"><i class="fas fa-play"></i></div>';
+                
+                // Update formats
+                formatOptions.innerHTML = '';
+                videoData.formats.forEach(format => {
+                    const formatElement = document.createElement('div');
+                    formatElement.className = 'format-option';
+                    if (format.default) formatElement.classList.add('active');
+                    
+                    formatElement.innerHTML = `
+                        <div class="format-header">
+                            <div class="format-type">${format.type}</div>
+                            <div class="format-size">${format.size}</div>
+                        </div>
+                        <div class="format-details">
+                            ${format.details.map(d => `<span>${d}</span>`).join('')}
+                        </div>
+                    `;
+                    formatOptions.appendChild(formatElement);
+                });
+                
+                showNotification('Video info fetched successfully!');
+            } catch (error) {
+                console.error('Error fetching video info:', error);
+                showNotification('Failed to fetch video info', true);
+            } finally {
+                fetchBtn.innerHTML = originalText;
+                fetchBtn.disabled = false;
+            }
+        });
+
+        // Download video
+        downloadBtn.addEventListener('click', async () => {
+            const url = videoUrl.value.trim();
+            if (!url) {
+                showNotification('Please enter a video URL', true);
+                return;
+            }
+            
+            // Get selected format
+            const selectedFormat = document.querySelector('.format-option.active');
+            if (!selectedFormat) {
+                showNotification('Please select a format', true);
+                return;
+            }
+            
+            const formatType = selectedFormat.querySelector('.format-type').textContent;
+            
+            // Show loading state
+            const originalText = downloadBtn.innerHTML;
+            downloadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparing...';
+            downloadBtn.disabled = true;
+            progressContainer.style.display = 'block';
+            
+            try {
+                // Simulate download process
+                let progress = 0;
+                const interval = setInterval(() => {
+                    progress += 5;
+                    progressBar.style.width = `${progress}%`;
+                    
+                    if (progress >= 100) {
+                        clearInterval(interval);
+                        
+                        // Create a fake download
+                        
+    const response = await fetch('https://your-render-app.onrender.com/api/info', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+    });
+    const videoData = await response.json();
+    
+                        
+    const formatType = selectedFormat.querySelector('.format-type').textContent;
+    const formatId = formatType.toLowerCase().includes('mp3') ? 'bestaudio' : 'bestvideo+bestaudio';
+    const response = await fetch('https://your-render-app.onrender.com/api/download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, format_id: formatId })
+    });
+    const blob = await response.blob();
+    const fakeDownloadLink = document.createElement('a');
+    fakeDownloadLink.href = window.URL.createObjectURL(blob);
+
+                        fakeDownloadLink.download = `${videoData.title.replace(/\s+/g, '_')}.${formatType.includes('MP3') ? 'mp3' : 'mp4'}`;
+                        document.body.appendChild(fakeDownloadLink);
+                        fakeDownloadLink.click();
+                        document.body.removeChild(fakeDownloadLink);
+                        
+                        // Reset UI
+                        setTimeout(() => {
+                            downloadBtn.innerHTML = originalText;
+                            downloadBtn.disabled = false;
+                            progressBar.style.width = '0%';
+                            progressContainer.style.display = 'none';
+                            
+                            showNotification('Download completed successfully!');
+                        }, 500);
+                    }
+                }, 100);
+            } catch (error) {
+                console.error('Download error:', error);
+                downloadBtn.innerHTML = originalText;
+                downloadBtn.disabled = false;
+                progressBar.style.width = '0%';
+                progressContainer.style.display = 'none';
+                showNotification('Download failed', true);
+            }
+        });
+
+        // Video data based on URL
+        function getVideoData(url) {
+            if (url.includes('youtube.com') || url.includes('youtu.be')) {
+                return {
+                    title: "Rick Astley - Never Gonna Give You Up (Official Music Video)",
+                    channel: "Rick Astley",
+                    duration: "3:32",
+                    uploadDate: "Oct 25, 2009",
+                    views: "1.4B views",
+                    thumbnail: "https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",
+                    downloadUrl: "#",
+                    formats: [
+                        { type: "MP4 1080p", size: "128MB", details: ["Video: H.264", "Audio: AAC"], default: true },
+                        { type: "MP4 720p", size: "78MB", details: ["Video: H.264", "Audio: AAC"] },
+                        { type: "MP3", size: "12MB", details: ["Audio: 320kbps"] },
+                        { type: "MP4 480p", size: "42MB", details: ["Video: H.264", "Audio: AAC"] }
+                    ]
+                };
+            } else if (url.includes('tiktok.com')) {
+                return {
+                    title: "Funny Cat Compilation #37",
+                    channel: "CatLover123",
+                    duration: "0:45",
+                    uploadDate: "Mar 12, 2023",
+                    views: "15.2M views",
+                    thumbnail: "https://placekitten.com/800/450",
+                    downloadUrl: "#",
+                    formats: [
+                        { type: "MP4 HD", size: "18MB", details: ["Video: H.264", "Audio: AAC"], default: true },
+                        { type: "MP4 SD", size: "9MB", details: ["Video: H.264", "Audio: AAC"] },
+                        { type: "MP3", size: "1.8MB", details: ["Audio: 128kbps"] }
+                    ]
+                };
+            } else if (url.includes('instagram.com')) {
+                return {
+                    title: "Beautiful Sunset at the Beach",
+                    channel: "TravelWithMe",
+                    duration: "0:59",
+                    uploadDate: "Jun 5, 2023",
+                    views: "2.3M views",
+                    thumbnail: "https://picsum.photos/800/450?sunset",
+                    downloadUrl: "#",
+                    formats: [
+                        { type: "MP4 HD", size: "24MB", details: ["Video: H.264", "Audio: AAC"], default: true },
+                        { type: "MP4 SD", size: "12MB", details: ["Video: H.264", "Audio: AAC"] }
+                    ]
+                };
+            }
+            
+            // Default for other platforms
+            return {
+                title: "Amazing Nature Documentary",
+                channel: "Nature Channel",
+                duration: "15:42",
+                uploadDate: "May 18, 2023",
+                views: "3.7M views",
+                thumbnail: "https://picsum.photos/800/450?nature",
+                downloadUrl: "#",
+                formats: [
+                    { type: "MP4 1080p", size: "256MB", details: ["Video: H.264", "Audio: AAC"], default: true },
+                    { type: "MP4 720p", size: "148MB", details: ["Video: H.264", "Audio: AAC"] },
+                    { type: "MP3", size: "28MB", details: ["Audio: 320kbps"] }
+                ]
+            };
+        }
+    </script>
+</body>
+</html>
